@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use my_no_sql_grpc_core::db_entity::{consts, write_varint};
+use my_no_sql_grpc_abstractions::db_entity::{consts, write_varint};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tonic::Request;
 
@@ -47,7 +47,7 @@ async fn start() -> WriterGrpcService {
 /// before it keeps it, because bytes it can not read back could never show
 /// anything and would sit in `tables.meta` outliving every restart.
 fn schema_bytes() -> Vec<u8> {
-    use my_no_sql_grpc_core::schemas::{Field, ItemType, Message, Scalar, Schema, Tp};
+    use my_no_sql_grpc_abstractions::schemas::{Field, ItemType, Message, Scalar, Schema, Tp};
 
     let string = Tp::Item(ItemType::Scalar(Scalar::String));
 

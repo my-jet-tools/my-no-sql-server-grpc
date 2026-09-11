@@ -1,5 +1,5 @@
 use ahash::AHashMap;
-use my_no_sql_grpc_core::schemas::{ItemType, Scalar, Schema};
+use my_no_sql_grpc_abstractions::schemas::{ItemType, Scalar, Schema};
 
 /// What a stored row's bytes mean, resolved once out of the schema the client
 /// sent with its entity.

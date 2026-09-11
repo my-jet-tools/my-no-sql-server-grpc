@@ -9,10 +9,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use mcp_server_middleware::McpToolCall;
-use my_no_sql_grpc_core::db::{DbTable, DbTableAttributes, GetRowStatisticsResult};
-use my_no_sql_grpc_core::schemas::{
+use my_no_sql_grpc_abstractions::schemas::{
     DeclaredField, EntitySchema, Scalar, SchemaBuilder, get_schema_id,
 };
+use my_no_sql_grpc_core::db::{DbTable, DbTableAttributes, GetRowStatisticsResult};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use super::*;

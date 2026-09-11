@@ -138,7 +138,7 @@ fn group_by_partition(rows: Vec<Arc<DbRow>>) -> Vec<PartitionRows> {
 
 #[cfg(test)]
 mod tests {
-    use my_no_sql_grpc_core::db_entity::{ParsedEntity, consts, write_varint};
+    use my_no_sql_grpc_abstractions::db_entity::{ParsedEntity, consts, write_varint};
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::*;

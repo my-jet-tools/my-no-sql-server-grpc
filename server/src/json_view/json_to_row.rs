@@ -12,7 +12,7 @@
 //! exactly what `build_db_row::register_schema` refuses.
 
 use my_json::json_reader::{JsonFirstLineIterator, JsonValueRef};
-use my_no_sql_grpc_core::db_entity::{
+use my_no_sql_grpc_abstractions::db_entity::{
     consts, moment_is_in_range, write_i32_field, write_i64_field, write_len_field,
     write_varint_field,
 };
@@ -330,7 +330,7 @@ fn as_integer<T: std::str::FromStr>(value: &JsonValueRef) -> Option<T> {
 
 #[cfg(test)]
 mod tests {
-    use my_no_sql_grpc_core::schemas::{DeclaredField, Scalar, SchemaBuilder};
+    use my_no_sql_grpc_abstractions::schemas::{DeclaredField, Scalar, SchemaBuilder};
 
     use super::*;
     use crate::json_view::write_row_as_json;
@@ -429,7 +429,7 @@ mod tests {
         )
         .unwrap();
 
-        let parsed = my_no_sql_grpc_core::db_entity::ParsedEntity::parse(&row).unwrap();
+        let parsed = my_no_sql_grpc_abstractions::db_entity::ParsedEntity::parse(&row).unwrap();
 
         assert!(
             parsed.time_stamp.is_none(),
@@ -448,7 +448,7 @@ mod tests {
 
         // Zero is what a row with no `Expires` at all already says: never.
         assert_eq!(
-            my_no_sql_grpc_core::db_entity::ParsedEntity::parse(&without)
+            my_no_sql_grpc_abstractions::db_entity::ParsedEntity::parse(&without)
                 .unwrap()
                 .expires,
             0

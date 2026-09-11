@@ -1,4 +1,4 @@
-use my_no_sql_grpc_core::db_entity::DbEntityParseFail;
+use my_no_sql_grpc_abstractions::db_entity::DbEntityParseFail;
 
 #[derive(Debug)]
 pub enum DbOperationError {

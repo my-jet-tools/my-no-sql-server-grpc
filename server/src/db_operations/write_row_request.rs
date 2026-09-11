@@ -1,4 +1,4 @@
-use my_no_sql_grpc_core::schemas::EntitySchema;
+use my_no_sql_grpc_abstractions::schemas::EntitySchema;
 
 use crate::data_sync_period::DataSyncPeriod;
 

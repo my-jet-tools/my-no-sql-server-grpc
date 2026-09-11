@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+my-no-sql-grpc-abstractions = { workspace = true }
 my-no-sql-grpc-core = { workspace = true }
 
 rust-extensions = { workspace = true }
@@ -49,11 +50,10 @@ zstd = "*"
 zip = { version = "*", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
-# The two client crates, so the contracts are exercised the way an application
-# will use them - over a real socket, not by calling the handlers directly.
-my-no-sql-grpc-macros = { workspace = true }
-my-no-sql-grpc-reader = { workspace = true }
-my-no-sql-grpc-writer = { workspace = true }
+# The SDK facade, so the contracts are exercised the way an application will use
+# them - one dependency, over a real socket, not by calling the handlers
+# directly.
+my-no-sql-grpc-sdk = { workspace = true }
 
 [build-dependencies]
 ci-utils = { workspace = true }

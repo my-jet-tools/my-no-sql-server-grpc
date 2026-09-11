@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use my_no_sql_grpc_core::db_entity::{ParsedEntity, consts, write_varint};
+use my_no_sql_grpc_abstractions::db_entity::{ParsedEntity, consts, write_varint};
 use tonic::Request;
 
 use crate::app::AppContext;
@@ -31,7 +31,7 @@ fn schema_bytes() -> Vec<u8> {
 /// The same shape under another root name - a different schema by every measure
 /// that matters here, and a valid one.
 fn schema_bytes_of(root_message_name: &str) -> Vec<u8> {
-    use my_no_sql_grpc_core::schemas::{Field, ItemType, Message, Scalar, Schema, Tp};
+    use my_no_sql_grpc_abstractions::schemas::{Field, ItemType, Message, Scalar, Schema, Tp};
 
     let string = Tp::Item(ItemType::Scalar(Scalar::String));
 
@@ -587,7 +587,7 @@ async fn a_row_without_a_partition_key_is_refused() {
     // on the wire either, so this is what a broken entity actually looks like.
     request.row = {
         let full = entity("acc-1", "rk", "x");
-        let mut reader = my_no_sql_grpc_core::db_entity::ProtobufReader::new(&full);
+        let mut reader = my_no_sql_grpc_abstractions::db_entity::ProtobufReader::new(&full);
         let mut without_pk = Vec::new();
 
         while let Some(field) = reader.get_next().unwrap() {

@@ -95,7 +95,7 @@ pub fn deserialize(payload: &[u8]) -> Result<Vec<PersistedRow>, String> {
 
 #[cfg(test)]
 mod tests {
-    use my_no_sql_grpc_core::db_entity::{ParsedEntity, consts, write_varint};
+    use my_no_sql_grpc_abstractions::db_entity::{ParsedEntity, consts, write_varint};
     use rust_extensions::date_time::DateTimeAsMicroseconds;
 
     use super::*;

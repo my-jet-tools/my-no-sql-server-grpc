@@ -1,8 +1,9 @@
 [workspace]
 resolver = "3"
-# `writer` and `reader` are the client side of the two contracts. They live here
-# while the contracts are still moving, and move out into the SDK once they stop.
-members = ["core", "macros", "reader", "server", "writer"]
+# Only the server. The core, the macros and both clients live in the SDK, which
+# this repository depends on by tag - the very same crates, from the repo an
+# application takes them from.
+members = ["server"]
 
 [workspace.package]
 version = "0.1.0"
@@ -10,10 +11,16 @@ edition = "2024"
 authors = ["amigin <amigin@gmail.com>"]
 
 [workspace.dependencies]
-my-no-sql-grpc-core = { path = "./core" }
-my-no-sql-grpc-macros = { path = "./macros" }
-my-no-sql-grpc-reader = { path = "./reader" }
-my-no-sql-grpc-writer = { path = "./writer" }
+# One tag for all three: they are one workspace over there, and a mixed set is
+# not a combination anybody tests. The facade is a dev-dependency of the server
+# (see server/Cargo.toml) - it carries the macros and both clients for the tests.
+my-no-sql-grpc-abstractions = { tag = "0.1.0", git = "https://github.com/my-jet-tools/my-no-sql-grpc-sdk.git" }
+my-no-sql-grpc-core = { tag = "0.1.0", git = "https://github.com/my-jet-tools/my-no-sql-grpc-sdk.git" }
+my-no-sql-grpc-sdk = { tag = "0.1.0", git = "https://github.com/my-jet-tools/my-no-sql-grpc-sdk.git", features = [
+    "macros",
+    "data-writer",
+    "data-reader",
+] }
 
 rust-extensions = { tag = "0.1.5", git = "https://github.com/MyJetTools/rust-extensions.git", features = [
     "with-tokio",

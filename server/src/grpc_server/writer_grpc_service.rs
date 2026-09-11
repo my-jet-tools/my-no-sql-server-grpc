@@ -2,8 +2,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use futures_core::Stream;
+use my_no_sql_grpc_abstractions::db_entity::{DbEntityParseFail, ParsedEntity};
 use my_no_sql_grpc_core::db::{BulkWriteMode, DbRow, DbTable, GetRowsFilter};
-use my_no_sql_grpc_core::db_entity::{DbEntityParseFail, ParsedEntity};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tonic::{Request, Response, Status};
 

@@ -12,9 +12,9 @@ use std::time::Duration;
 
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
-use my_no_sql_grpc_macros::{my_no_sql_entity, my_no_sql_message};
-use my_no_sql_grpc_reader::MyNoSqlGrpcReader;
-use my_no_sql_grpc_writer::{
+use my_no_sql_grpc_sdk::macros::{my_no_sql_entity, my_no_sql_message};
+use my_no_sql_grpc_sdk::reader::MyNoSqlGrpcReader;
+use my_no_sql_grpc_sdk::writer::{
     MyNoSqlGrpcConnection, MyNoSqlGrpcWriter, TableAttributesGrpcModel, my_no_sql_writer_grpc,
 };
 
@@ -404,7 +404,7 @@ async fn a_backup_is_taken_inspected_and_put_back() {
 
     // The schema came back with it, so the rows are still showable - out of the
     // restored table's own metadata, which is the archive entry it rode in.
-    let schema_id = <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id;
+    let schema_id = <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id;
     assert!(
         server
             .app
@@ -534,7 +534,7 @@ async fn a_table_migrates_to_another_server_with_its_schema() {
         MyNoSqlGrpcWriter::new(MyNoSqlGrpcConnection::new(destination.url.clone()).unwrap())
             .with_sync_period(my_no_sql_writer_grpc::SyncPeriodGrpcModel::SyncPeriodImmediately);
 
-    let schema_id = <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id;
+    let schema_id = <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id;
     assert!(
         destination
             .app
@@ -659,7 +659,7 @@ async fn a_table_moves_between_namespaces_with_its_data() {
     // The schema travelled too, so the destination can still show the rows - it
     // is an attribute of the table, and the table is what moved.
     let archive = server.app.namespaces.get("archive").unwrap();
-    let schema_id = <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id;
+    let schema_id = <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id;
     assert!(
         archive
             .tables
@@ -1010,7 +1010,7 @@ async fn the_schema_the_macro_built_renders_a_row_by_its_field_names() {
 
     let db_namespace = server.app.namespaces.get("").unwrap();
 
-    let schema_id = <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id;
+    let schema_id = <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id;
     let stored_schema = db_namespace
         .tables
         .get_table(TestEntity::TABLE_NAME)
@@ -1110,7 +1110,7 @@ async fn a_nested_message_renders_as_a_nested_object() {
     // ...and the server, which never saw the Rust types, renders it by name.
     let db_namespace = server.app.namespaces.get("").unwrap();
 
-    let schema_id = <NestedEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id;
+    let schema_id = <NestedEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id;
     let stored_schema = db_namespace
         .tables
         .get_table(NestedEntity::TABLE_NAME)
@@ -1535,7 +1535,7 @@ async fn the_table_comes_back_grouped_by_the_schema_it_was_written_under() {
     let schema = chunks[0].schema.as_ref().unwrap();
     assert_eq!(
         schema.schema_id,
-        <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::get_schema().id
+        <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::get_schema().id
     );
 
     // The rows travel as they are stored, so the destination stores what the
@@ -1544,7 +1544,7 @@ async fn the_table_comes_back_grouped_by_the_schema_it_was_written_under() {
         .rows
         .iter()
         .map(|row| {
-            <TestEntity as my_no_sql_grpc_core::MyNoSqlEntity>::from_slice(row)
+            <TestEntity as my_no_sql_grpc_abstractions::MyNoSqlEntity>::from_slice(row)
                 .unwrap()
                 .payload
         })

@@ -2,8 +2,8 @@
 //! entity macro expands into - so these tests exercise the shape a client's
 //! schema arrives in, without a client in the picture.
 
-use my_no_sql_grpc_core::db_entity::{consts, write_varint};
-use my_no_sql_grpc_core::schemas::{DeclaredField, Scalar, SchemaBuilder};
+use my_no_sql_grpc_abstractions::db_entity::{consts, write_varint};
+use my_no_sql_grpc_abstractions::schemas::{DeclaredField, Scalar, SchemaBuilder};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use my_json::json_writer::JsonObjectWriter;

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use mcp_server_middleware::*;
 use my_ai_agent::macros::ApplyJsonSchema;
+use my_no_sql_grpc_abstractions::db_entity::ParsedEntity;
 use my_no_sql_grpc_core::db::DbRow;
-use my_no_sql_grpc_core::db_entity::ParsedEntity;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use serde::*;
 

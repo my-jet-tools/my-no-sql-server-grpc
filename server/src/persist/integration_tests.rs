@@ -7,9 +7,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use ahash::AHashMap;
+use my_no_sql_grpc_abstractions::db_entity::{ParsedEntity, consts, write_varint};
+use my_no_sql_grpc_abstractions::schemas::EntitySchema;
 use my_no_sql_grpc_core::db::{DbRow, DbTableAttributes};
-use my_no_sql_grpc_core::db_entity::{ParsedEntity, consts, write_varint};
-use my_no_sql_grpc_core::schemas::EntitySchema;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use super::{PersistRepo, partition_blob};

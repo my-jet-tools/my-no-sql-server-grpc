@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use ahash::AHashMap;
+use my_no_sql_grpc_abstractions::db_entity::ParsedEntity;
+use my_no_sql_grpc_abstractions::schemas::EntitySchema;
 use my_no_sql_grpc_core::db::{BulkWriteMode, DbRow, DbTable, GetRowsFilter};
-use my_no_sql_grpc_core::db_entity::ParsedEntity;
-use my_no_sql_grpc_core::schemas::EntitySchema;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 use tonic::transport::Endpoint;
 

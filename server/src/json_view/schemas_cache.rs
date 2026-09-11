@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ahash::AHashMap;
 use arc_swap::ArcSwap;
-use my_no_sql_grpc_core::schemas::EntitySchema;
+use my_no_sql_grpc_abstractions::schemas::EntitySchema;
 use parking_lot::Mutex;
 
 use super::SchemaIndex;

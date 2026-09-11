@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use my_no_sql_grpc_abstractions::db_entity::ParsedEntity;
 use my_no_sql_grpc_core::db::{DbPartition, DbRow, DbTable, DbTableAttributes};
-use my_no_sql_grpc_core::db_entity::ParsedEntity;
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use crate::app::{AppContext, DbNamespace};

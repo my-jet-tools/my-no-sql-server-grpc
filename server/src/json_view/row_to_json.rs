@@ -1,6 +1,6 @@
 use ahash::AHashMap;
 use my_json::json_writer::{JsonArrayWriter, JsonObjectWriter};
-use my_no_sql_grpc_core::db_entity::{ProtobufReader, consts, moment_is_in_range};
+use my_no_sql_grpc_abstractions::db_entity::{ProtobufReader, consts, moment_is_in_range};
 use rust_extensions::date_time::DateTimeAsMicroseconds;
 
 use super::base64;
@@ -368,8 +368,8 @@ impl<'s> PackedReader<'s> {
 /// `json_view::tests` against a schema built the way a client's arrives.
 #[cfg(test)]
 mod tests {
-    use my_no_sql_grpc_core::db_entity::{MAX_MOMENT_MICROSECONDS, write_varint};
-    use my_no_sql_grpc_core::schemas::{DeclaredField, SchemaBuilder};
+    use my_no_sql_grpc_abstractions::db_entity::{MAX_MOMENT_MICROSECONDS, write_varint};
+    use my_no_sql_grpc_abstractions::schemas::{DeclaredField, SchemaBuilder};
 
     use super::*;
 
