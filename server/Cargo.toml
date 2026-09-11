@@ -1,0 +1,59 @@
+[package]
+name = "my-no-sql-server-grpc"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+my-no-sql-grpc-core = { workspace = true }
+
+rust-extensions = { workspace = true }
+my-logger = { workspace = true }
+
+ahash = { workspace = true }
+arc-swap = { workspace = true }
+parking_lot = { workspace = true }
+
+my-http-server = { tag = "0.9.0", git = "https://github.com/MyJetTools/my-http-server.git", features = [
+    "macros",
+    "controllers",
+] }
+my-http-utils = { tag = "0.1.0", git = "https://github.com/MyJetTools/my-http-utils.git", features = [
+    "server",
+] }
+my-json = { tag = "0.3.2", git = "https://github.com/MyJetTools/my-json.git" }
+
+# The MCP surface. `my-ai-agent` is a direct dependency and not only a
+# re-export of the middleware, because `ApplyJsonSchema` generates `my_ai_agent::`
+# paths - the derive does not compile without the crate under that name.
+mcp-server-middleware = { tag = "0.9.0", git = "https://github.com/my-ai-utils/mcp-server-middleware.git" }
+my-ai-agent = { tag = "0.1.0", git = "https://github.com/my-ai-utils/my-ai-agent.git", features = [
+    "agent",
+] }
+
+tonic = { version = "*" }
+tonic-prost = "*"
+prost = "*"
+
+tokio = { version = "*", features = ["full"] }
+tokio-stream = { version = "*", features = ["net"] }
+futures-core = "*"
+
+serde = { version = "*", features = ["derive"] }
+serde_yaml = "*"
+
+async-trait = "*"
+crc32fast = "*"
+zstd = "*"
+# A backup is a zip, the way the JSON version has always made them.
+zip = { version = "*", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+# The two client crates, so the contracts are exercised the way an application
+# will use them - over a real socket, not by calling the handlers directly.
+my-no-sql-grpc-macros = { workspace = true }
+my-no-sql-grpc-reader = { workspace = true }
+my-no-sql-grpc-writer = { workspace = true }
+
+[build-dependencies]
+ci-utils = { workspace = true }

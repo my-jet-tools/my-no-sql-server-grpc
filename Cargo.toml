@@ -1,0 +1,26 @@
+[workspace]
+resolver = "3"
+# `writer` and `reader` are the client side of the two contracts. They live here
+# while the contracts are still moving, and move out into the SDK once they stop.
+members = ["core", "macros", "reader", "server", "writer"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["amigin <amigin@gmail.com>"]
+
+[workspace.dependencies]
+my-no-sql-grpc-core = { path = "./core" }
+my-no-sql-grpc-macros = { path = "./macros" }
+my-no-sql-grpc-reader = { path = "./reader" }
+my-no-sql-grpc-writer = { path = "./writer" }
+
+rust-extensions = { tag = "0.1.5", git = "https://github.com/MyJetTools/rust-extensions.git", features = [
+    "with-tokio",
+] }
+my-logger = { tag = "1.3.0", git = "https://github.com/MyJetTools/my-logger.git" }
+ci-utils = { tag = "0.1.3", git = "https://github.com/MyJetTools/ci-utils.git" }
+
+ahash = "*"
+arc-swap = "*"
+parking_lot = "*"

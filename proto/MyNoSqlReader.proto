@@ -1,0 +1,171 @@
+syntax = "proto3";
+package my_no_sql_reader;
+
+import "google/protobuf/empty.proto";
+
+// A reader keeps an in-process cache of the tables it subscribed to.
+//
+// The full image of a table arrives exactly one way - streamed back from
+// `Subscribe`. Everything after that is instructions carried by `GetChange`,
+// which long-polls: it holds for up to 5 seconds and answers with an empty
+// message when there is nothing to deliver, so an empty answer doubles as the
+// ping.
+//
+// Failure model is the one TCP had: any failed call, or `unknown session`, means
+// the reader drops its session, greets again and re-subscribes to everything.
+// That is why there are no packet ids and no acknowledgements - a lost answer
+// shows up as a failed call and is cured by a fresh snapshot.
+
+message GreetingGrpcRequest {
+    string AppName = 1;
+    string Version = 2;
+    string NameSpace = 3;
+}
+
+message GreetingGrpcResponse {
+    string SessionId = 1;
+}
+
+message SubscribeGrpcRequest {
+    string SessionId = 1;
+    string TableName = 2;
+}
+
+// Rows are the entities exactly as they are served over the writer contract.
+message DbRowsChunkGrpcModel {
+    repeated bytes Rows = 1;
+}
+
+message PartitionRowsGrpcModel {
+    string PartitionKey = 1;
+    repeated bytes Rows = 2;
+}
+
+message PartitionRowKeysGrpcModel {
+    string PartitionKey = 1;
+    repeated string RowKeys = 2;
+}
+
+// ---- what the queue carries -------------------------------------------------
+//
+// A batch of records is cut into several chunks and closed by its `End`. The
+// reader accumulates the chunks and applies the batch in one go when `End`
+// arrives - so a batch whose middle went missing is never applied half way: the
+// reader simply stays on the data it had.
+//
+// `CleanTable`, `DeleteTable` and `CleanPartitions` need no `End`: they are
+// instructions, not records, and there is nothing to cut.
+
+// The table is the same table, but what it does with itself changed - its
+// limits, or whether it is persisted at all. A reader which shows a table to
+// somebody wants to know.
+message TableAttributesGrpcModel {
+    bool Persist = 1;
+    optional int32 MaxPartitionsAmount = 2;
+    optional int32 MaxRowsPerPartitionAmount = 3;
+    // 4 was Compressed - keeping the rows zstd-ed in memory. It was a JSON
+    // server's answer to JSON text; a protobuf row is already the compact form,
+    // and an attribute nothing reads is an attribute nobody can trust.
+    reserved 4;
+}
+
+message UpdateTableAttributesGrpcModel {
+    string TableName = 1;
+    TableAttributesGrpcModel Attributes = 2;
+}
+
+message CleanTableGrpcModel {
+    string TableName = 1;
+}
+
+// The table itself is gone, not just its rows - the reader drops it from the
+// cache instead of keeping an empty one. The subscription stays: a table created
+// under the same name again starts feeding this reader without a re-subscribe.
+message DeleteTableGrpcModel {
+    string TableName = 1;
+}
+
+message CleanPartitionsGrpcModel {
+    string TableName = 1;
+    repeated string PartitionKeys = 2;
+}
+
+message InitPartitionsGrpcModel {
+    string TableName = 1;
+    repeated PartitionRowsGrpcModel Partitions = 2;
+}
+
+message InitPartitionsEndGrpcModel {
+    string TableName = 1;
+}
+
+message UpdateRowsGrpcModel {
+    string TableName = 1;
+    repeated bytes Rows = 2;
+}
+
+message UpdateRowsEndGrpcModel {
+    string TableName = 1;
+}
+
+message DeleteRowsGrpcModel {
+    string TableName = 1;
+    repeated PartitionRowKeysGrpcModel Partitions = 2;
+}
+
+message DeleteRowsEndGrpcModel {
+    string TableName = 1;
+}
+
+message GetChangeGrpcRequest {
+    string SessionId = 1;
+    // What this reader actually read since the previous call. It is a hint, not
+    // data - losing it with a failed call costs nothing - but it is what feeds
+    // the eviction of partitions nobody reads.
+    repeated PartitionReadStatisticsGrpcModel ReadStatistics = 2;
+}
+
+// What a reader tells the server about one partition it looked at.
+//
+// The last-read marks feed the eviction of what nobody reads. The expiry fields
+// are the other half of the same idea - sliding expiration: a reader which keeps
+// asking for a row is what keeps the row alive, so the TTL is pushed forward by
+// the reading rather than by a separate call.
+//
+// Each of the two is a flag and a value, because "leave it alone" and "set it to
+// never" are different instructions: the flag says whether to apply anything at
+// all, the value is unix microseconds and 0 there means never.
+message PartitionReadStatisticsGrpcModel {
+    string TableName = 1;
+    string PartitionKey = 2;
+    bool UpdatePartitionLastReadTime = 3;
+    repeated string RowKeys = 4;
+    bool UpdateRowsLastReadTime = 5;
+    bool UpdatePartitionExpires = 6;
+    int64 PartitionExpires = 7;
+    bool UpdateRowsExpires = 8;
+    int64 RowsExpires = 9;
+}
+
+// At most one field is set - one chunk per answer, in the order the server
+// queued them. Everything empty means "nothing to deliver", which is the ping.
+message GetChangeGrpcResponse {
+    optional CleanTableGrpcModel CleanTable = 1;
+    optional CleanPartitionsGrpcModel CleanPartitions = 2;
+    optional InitPartitionsGrpcModel InitPartitions = 3;
+    optional InitPartitionsEndGrpcModel InitPartitionsEnd = 4;
+    optional UpdateRowsGrpcModel UpdateRows = 5;
+    optional UpdateRowsEndGrpcModel UpdateRowsEnd = 6;
+    optional DeleteRowsGrpcModel DeleteRows = 7;
+    optional DeleteRowsEndGrpcModel DeleteRowsEnd = 8;
+    optional DeleteTableGrpcModel DeleteTable = 9;
+    optional UpdateTableAttributesGrpcModel UpdateTableAttributes = 10;
+}
+
+service Reader {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+    rpc Greeting(GreetingGrpcRequest) returns (GreetingGrpcResponse);
+    rpc Subscribe(SubscribeGrpcRequest) returns (stream DbRowsChunkGrpcModel);
+    rpc GetChange(GetChangeGrpcRequest) returns (GetChangeGrpcResponse);
+}

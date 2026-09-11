@@ -1,0 +1,12 @@
+[package]
+name = "my-no-sql-grpc-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+rust-extensions = { workspace = true }
+
+ahash = { workspace = true }
+arc-swap = { workspace = true }
+parking_lot = { workspace = true }

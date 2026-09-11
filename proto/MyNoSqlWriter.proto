@@ -1,0 +1,597 @@
+syntax = "proto3";
+package my_no_sql_writer;
+
+import "google/protobuf/empty.proto";
+
+// Every entity of this server is a protobuf message whose first four fields are
+// reserved by the contract:
+//
+//   string PartitionKey = 1;
+//   string RowKey       = 2;
+//   int64  TimeStamp    = 3;   // unix microseconds
+//   int64  Expires      = 4;   // unix microseconds, 0 = never expires
+//
+// User fields start at 5. The server parses an entity by walking the wire format
+// - it never needs the schema to find the four fields above.
+
+// How long a write may sit in memory before it is flushed to disk.
+enum SyncPeriodGrpcModel {
+    SyncPeriodDefault = 0; // the server default - 5 seconds
+    SyncPeriodImmediately = 1;
+    SyncPeriodSec1 = 2;
+    SyncPeriodSec5 = 3;
+    SyncPeriodSec15 = 4;
+    SyncPeriodSec30 = 5;
+    SyncPeriodMin1 = 6;
+    SyncPeriodAsap = 7;
+}
+
+// The schema an entity is written with. It travels with every entity, and the
+// server parses it only when it meets a SchemaId that TABLE does not know yet.
+// Every stored row remembers the id of the schema it was written with, so rows
+// of different entity versions live side by side.
+//
+// A schema is kept by the table whose rows were written under it, beside that
+// table's other metadata - so a restart brings the shape and the data back by
+// one act, and so does a backup or a move between namespaces. A schema no row of
+// the table names any more is eventually collected; the last one is kept even
+// when the table is empty, because an emptied table is still drawn.
+//
+// Schema is this server's own format, NOT a protobuf FileDescriptorSet, and it
+// is deliberately narrower than protobuf: nine scalar types (bool, int32, int64,
+// uint32, uint64, float, double, string, bytes), a message carried by reference,
+// and one level of "repeated" - no sint*, no fixed*, no enums, no maps, no
+// groups, no packages. Its canonical bytes are:
+//
+//   Schema  { root = 1 (varint, index into the message table);
+//             repeated Message = 2 }
+//   Message { name = 1; repeated Field = 2 }
+//   Field   { no = 1 (varint); name = 2;
+//             scalar = 3 (varint) exclusive-or object = 4 (varint, index);
+//             array = 5 (varint, 0 or 1) }
+//
+// scalar is 1=bool, 2=int32, 3=int64, 4=uint32, 5=uint64, 6=float, 7=double,
+// 8=string, 9=bytes. There is exactly ONE spelling of a given schema and the
+// server refuses every other: messages sorted by name, fields sorted by number,
+// no name and no number twice, every singular field of the frame written exactly
+// once even when its value is the default.
+//
+// Describe PartitionKey (1) and RowKey (2) as ordinary string fields. Do NOT
+// describe TimeStamp (3) or Expires (4): they are the server's own values, they
+// are not in the stored row, and the server puts them back when it shows one.
+//
+// SchemaId is DERIVED from the schema, not picked by hand: it is a constant the
+// writing client folds out of its own type - FNV-1a (64 bit, offset basis
+// 0xcbf29ce484222325, prime 0x00000100000001b3) over each message's name and
+// each of its fields, with a carried message contributing that message's own id.
+// The server does not recompute it. What it does instead is compare: when the id
+// arrives with a schema and that table already knows the id, the stored bytes and
+// the arriving bytes must be equal, and the write is refused when they are not.
+// So two shapes can not share a number in one table - and they must not, because
+// the id goes inside every stored row, and two entities sharing one would show
+// one table's rows through the other's field names for as long as those rows
+// live.
+message EntitySchemaGrpcModel {
+    fixed64 SchemaId = 1;
+    // 2 was RootMessageName and 3 was FileDescriptorSet, from when the schema
+    // was a protobuf descriptor set. A schema now names its own root, so there
+    // is nothing for the name to say.
+    reserved 2, 3;
+    bytes Schema = 4;
+}
+
+message TableAttributesGrpcModel {
+    bool Persist = 1;
+    optional int32 MaxPartitionsAmount = 2;
+    optional int32 MaxRowsPerPartitionAmount = 3;
+    // 4 was Compressed - keeping the rows zstd-ed in memory. It was a JSON
+    // server's answer to JSON text; a protobuf row is already the compact form,
+    // and an attribute nothing reads is an attribute nobody can trust.
+    reserved 4;
+}
+
+message CreateTableGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    TableAttributesGrpcModel Attributes = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+// A namespace owns its tables and its folder on disk. Two namespaces may hold a
+// table of the same name and they share nothing.
+message NamespaceGrpcModel {
+    string Name = 1;
+    int32 TablesAmount = 2;
+}
+
+message DeleteNamespaceGrpcRequest {
+    string NameSpace = 1;
+}
+
+// Moves a table between namespaces, data and all. The source stops having it and
+// the destination starts, which is what the subscribers of each are told.
+message MoveTableToNamespaceGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string DestinationNameSpace = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+message GetTablesGrpcRequest {
+    string NameSpace = 1;
+}
+
+message TableGrpcModel {
+    string Name = 1;
+    TableAttributesGrpcModel Attributes = 2;
+}
+
+message WriteRowGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    EntitySchemaGrpcModel Schema = 3;
+    // The entity, serialized by the client.
+    bytes Row = 4;
+    SyncPeriodGrpcModel SyncPeriod = 5;
+    // false - the server stamps TimeStamp with its own clock (the default);
+    // true  - the TimeStamp carried by the entity is kept as it is.
+    bool UseClientTimeStamp = 6;
+}
+
+message DeleteRowGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string PartitionKey = 3;
+    string RowKey = 4;
+    SyncPeriodGrpcModel SyncPeriod = 5;
+}
+
+// Says whether there was a row under those keys. A key which is not there is
+// not an error - BulkDelete answers the same input the same way, and deleting
+// one key must not disagree with deleting the same key among others.
+message DeleteRowGrpcResponse {
+    bool Deleted = 1;
+}
+
+// How a batch lands in the table. The stream a batch arrives on is transport
+// only: whichever mode is picked, the server accumulates every entity and
+// applies the whole batch under one acquisition of the table's write lock, and
+// the subscribers are told about it once.
+enum BulkWriteModeGrpcModel {
+    // Every entity replaces whatever was stored under its keys.
+    BulkWriteInsertOrReplace = 0;
+    // The stored row is kept unless the entity is strictly newer, so the entity
+    // has to carry its own TimeStamp - that is what the mode compares.
+    BulkWriteInsertOrReplaceIfNew = 1;
+    // The partitions the batch names are emptied first, so what is left in them
+    // is exactly the batch. Partitions it does not name are not touched.
+    BulkWriteCleanPartitionsAndInsert = 2;
+    // The whole table is emptied first - including a batch which carries no
+    // entities at all, which is the same thing as CleanTable.
+    BulkWriteCleanTableAndInsert = 3;
+}
+
+// One message of a bulk write. Everything but Schema and Rows is the header: it
+// describes the operation rather than the message, so every message repeats it
+// and every copy has to say the same thing. A message which disagrees is
+// refused - nothing is applied before the stream ends, so refusing halfway costs
+// nothing and leaves nothing behind.
+//
+// Schema is per message on purpose: one batch may carry entities of several
+// versions, and every row remembers the schema of the message it arrived in.
+message BulkWriteGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    BulkWriteModeGrpcModel Mode = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+    // BulkWriteInsertOrReplaceIfNew keeps the entity's TimeStamp whatever this
+    // says - the mode has no meaning without it.
+    bool UseClientTimeStamp = 5;
+    EntitySchemaGrpcModel Schema = 6;
+    // The entities, serialized by the client.
+    repeated bytes Rows = 7;
+}
+
+// ---- transactions ----------------------------------------------------------
+//
+// A batch which is all one kind of write is a BulkWrite. A transaction is for
+// the rest: cleaning and writing in one step, in an order the client picks. The
+// server accumulates the actions and applies them at CommitTransaction as one
+// entry into the table, so nothing a transaction does is ever half done, and the
+// subscribers are told about all of it in one contiguous run.
+//
+// A transaction belongs to ONE table, named once at the start. A reader is told
+// about changes table by table and applies them table by table, so an atomicity
+// which spanned two tables could never reach it anyway - and a guarantee which
+// can not be delivered is not worth the lock ordering it would cost.
+//
+// Actions are posted in a stream, so the bulky part of a transaction still
+// flows the way a bulk write does. Nothing reaches the transaction until that
+// stream ends cleanly: a stream which breaks, or a message the server refuses,
+// leaves the transaction exactly as it was, so the post is simply repeated.
+//
+// A transaction which is neither committed nor cancelled is forgotten after a
+// while of silence, the same way a reader session is. Committing or posting to
+// a forgotten one says the transaction is unknown; cancelling one does not, so
+// a client can always cancel without checking first.
+message StartTransactionGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    SyncPeriodGrpcModel SyncPeriod = 3;
+}
+
+message StartTransactionGrpcResponse {
+    string TransactionId = 1;
+}
+
+message TransactionCleanTableGrpcModel {}
+
+message TransactionDeletePartitionsGrpcModel {
+    repeated string PartitionKeys = 1;
+}
+
+message TransactionDeleteRowsGrpcModel {
+    string PartitionKey = 1;
+    repeated string RowKeys = 2;
+}
+
+message TransactionInsertOrReplaceGrpcModel {
+    EntitySchemaGrpcModel Schema = 1;
+    // The entities, serialized by the client.
+    repeated bytes Rows = 2;
+    // Decided per action, the same way it is decided per write elsewhere.
+    bool UseClientTimeStamp = 3;
+}
+
+// One message of a PostTransactionActions stream: the transaction it belongs to
+// and exactly one action. TransactionId is repeated on every message and has to
+// be the same everywhere, the way a bulk write repeats its header.
+//
+// The actions keep the order they were posted in, and that order is not
+// cosmetic: a row deleted and then written again is not the same as a row
+// written and then deleted.
+message TransactionActionGrpcModel {
+    string TransactionId = 1;
+    optional TransactionCleanTableGrpcModel CleanTable = 2;
+    optional TransactionDeletePartitionsGrpcModel DeletePartitions = 3;
+    optional TransactionDeleteRowsGrpcModel DeleteRows = 4;
+    optional TransactionInsertOrReplaceGrpcModel InsertOrReplace = 5;
+}
+
+message TransactionGrpcRequest {
+    string TransactionId = 1;
+}
+
+// Attributes are decided when a table is created and almost never after, but
+// "almost never" is not never: a limit which turned out wrong has to be
+// changeable without moving the data.
+message SetTableAttributesGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    TableAttributesGrpcModel Attributes = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+message CleanTableGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    SyncPeriodGrpcModel SyncPeriod = 3;
+}
+
+message DeleteTableGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    SyncPeriodGrpcModel SyncPeriod = 3;
+}
+
+// The table's own limits are applied on a schedule, along with the expiry of
+// rows whose Expires has come and gone. These two apply a limit right now, with
+// a number of their own - what goes out is what nobody has read for the longest.
+message CleanAndKeepMaxPartitionsGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    int32 MaxPartitionsAmount = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+message CleanPartitionAndKeepMaxRowsGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string PartitionKey = 3;
+    int32 MaxRowsAmount = 4;
+    SyncPeriodGrpcModel SyncPeriod = 5;
+}
+
+message DeletePartitionsGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    repeated string PartitionKeys = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+message PartitionRowKeysGrpcModel {
+    string PartitionKey = 1;
+    repeated string RowKeys = 2;
+}
+
+// Deletes rows named by key, across as many partitions as it takes, in one call
+// and one visit to the table. A transaction can do the same, but this is what it
+// looks like when deleting is all there is.
+message BulkDeleteGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    repeated PartitionRowKeysGrpcModel Partitions = 3;
+    SyncPeriodGrpcModel SyncPeriod = 4;
+}
+
+message BulkDeleteGrpcResponse {
+    int32 RowsDeleted = 1;
+}
+
+// Answers whether the row was taken. Unlike the other single-row writes, this
+// one declining is the normal outcome and not a failure - the stored row was at
+// least as new - so it says which of the two happened instead of leaving the
+// caller to guess.
+message InsertOrReplaceIfNewGrpcResponse {
+    bool Written = 1;
+}
+
+message GetRowGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string PartitionKey = 3;
+    string RowKey = 4;
+}
+
+message GetRowGrpcResponse {
+    optional bytes Row = 1;
+}
+
+message GetRowsGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    // No PartitionKey and no RowKey - the whole table.
+    optional string PartitionKey = 3;
+    optional string RowKey = 4;
+    optional int32 Skip = 5;
+    optional int32 Limit = 6;
+}
+
+// Rows of one partition whose RowKey is at or below the one asked for, newest
+// key first. Rows are kept sorted by RowKey, so this is a window into that order
+// rather than a scan.
+message GetHighestRowAndBelowGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string PartitionKey = 3;
+    string RowKey = 4;
+    optional int32 Limit = 5;
+}
+
+// Several named rows of one partition, in one call instead of one call each.
+message GetSinglePartitionMultipleRowsGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+    string PartitionKey = 3;
+    repeated string RowKeys = 4;
+}
+
+message GetTableSizeGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+}
+
+// All three counters in one answer: they are read together far more often than
+// apart, and each of them alone would be a round trip for a single number.
+message TableSizeGrpcResponse {
+    int64 PartitionsAmount = 1;
+    int64 RowsAmount = 2;
+    int64 ContentSize = 3;
+}
+
+// Rows together with the schema they were written under - the same shape a write
+// comes in as, which is the point: what one server hands out is what another one
+// takes in, so the destination registers the schema if it has never seen it and
+// every row keeps the reference to it.
+//
+// A table whose rows were written under several entity versions comes back as
+// several chunks, one per schema. A chunk with no schema carries rows whose
+// schema this table does not have any more - they are still rows, and losing
+// them because their descriptor went missing would be worse than moving them
+// unshowable.
+message DbRowsWithSchemaGrpcModel {
+    EntitySchemaGrpcModel Schema = 1;
+    repeated bytes Rows = 2;
+}
+
+message GetRowsWithSchemaGrpcRequest {
+    string NameSpace = 1;
+    string TableName = 2;
+}
+
+// Pulls a table from another server of this kind into this one.
+//
+// The destination does the pulling, so it is the one which needs no inbound
+// route to the source. What arrives replaces the local table: a migration which
+// merged would leave rows of two servers nobody can tell apart.
+// Writes everything the persist queue holds right now, whatever sync period each
+// change asked for. The queue is snapshotted when the call starts: what is
+// written while the flush runs belongs to the next one, so the call answers
+// "everything you had written before you asked is on disk" and returns.
+message FlushToDiskGrpcResponse {
+    int32 TasksWritten = 1;
+}
+
+message MigrateFromGrpcRequest {
+    // Where to pull from - the gRPC url of the other server.
+    string RemoteUrl = 1;
+    string RemoteNameSpace = 2;
+    string RemoteTableName = 3;
+    // Where it lands here. An empty TableName means the same name it had there.
+    string NameSpace = 4;
+    string TableName = 5;
+    SyncPeriodGrpcModel SyncPeriod = 6;
+}
+
+message MigrateFromGrpcResponse {
+    int32 RowsMigrated = 1;
+}
+
+// Rows are streamed in chunks; each row is the entity exactly as the client
+// serialized it, with TimeStamp and Expires re-generated by the server.
+message DbRowsChunkGrpcModel {
+    repeated bytes Rows = 1;
+}
+
+// ---- backups ----------------------------------------------------------------
+//
+// A backup is a **zip of one namespace**, laid out the way the namespace is:
+//
+//   <table>/.metadata               that table's attributes, schemas and all
+//   <table>/<base64url(partition)>  the partition, as a partition blob
+//
+// A partition is already serialized as a self-contained blob for the page-files,
+// so a backup is an array of partitions, one zip entry each, with the metadata
+// they can not be read without beside them. It is an ordinary zip, so an
+// operator opens it with the tool they already have.
+//
+// One archive per namespace, not one for the whole server: that is the unit
+// everything else about a namespace is. Restoring one is then one file, and how
+// many backups to keep is counted per namespace.
+//
+// Where they go is a setting of its own and not a folder inside the persistence
+// root: every folder there is loaded as a namespace at start up. Without that
+// setting there is nowhere to put them and every call here says so.
+
+message TakenBackupGrpcModel {
+    string NameSpace = 1;
+    string Name = 2;
+}
+
+message GetBackupsGrpcRequest {
+    string NameSpace = 1;
+}
+
+message BackupGrpcModel {
+    string Name = 1;
+    int64 Size = 2;
+}
+
+message BackupGrpcRequest {
+    string NameSpace = 1;
+    string Name = 2;
+}
+
+message BackupPartitionGrpcModel {
+    string PartitionKey = 1;
+    int32 RowsAmount = 2;
+}
+
+// One table as a backup holds it - what is in there, without restoring any of it.
+message BackupTableGrpcModel {
+    string TableName = 1;
+    repeated BackupPartitionGrpcModel Partitions = 2;
+}
+
+message GetBackupRowsGrpcRequest {
+    string NameSpace = 1;
+    string Name = 2;
+    string TableName = 3;
+    string PartitionKey = 4;
+}
+
+// The archive itself, cut into messages the transport can carry. Downloading it
+// and uploading it are the same bytes going opposite ways.
+message BackupChunkGrpcModel {
+    // Set on the first message of an upload and ignored on the rest, the way a
+    // bulk write carries its header.
+    string NameSpace = 1;
+    bytes Chunk = 2;
+}
+
+message UploadBackupGrpcResponse {
+    string Name = 1;
+}
+
+// Puts a backup back. What is restored replaces what is there - merging would
+// leave rows nobody can account for. Naming a partition restores that one alone,
+// which is what somebody who lost one thing wants.
+message RestoreBackupGrpcRequest {
+    string NameSpace = 1;
+    string Name = 2;
+    optional string TableName = 3;
+    optional string PartitionKey = 4;
+    SyncPeriodGrpcModel SyncPeriod = 5;
+}
+
+message RestoreBackupGrpcResponse {
+    int32 PartitionsRestored = 1;
+}
+
+service Writer {
+    rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty);
+
+    rpc CreateTable(CreateTableGrpcRequest) returns (google.protobuf.Empty);
+    rpc CreateTableIfNotExists(CreateTableGrpcRequest) returns (google.protobuf.Empty);
+    rpc GetTables(GetTablesGrpcRequest) returns (stream TableGrpcModel);
+
+    rpc MakeBackup(google.protobuf.Empty) returns (stream TakenBackupGrpcModel);
+    rpc GetBackups(GetBackupsGrpcRequest) returns (stream BackupGrpcModel);
+    rpc InspectBackup(BackupGrpcRequest) returns (stream BackupTableGrpcModel);
+    rpc GetBackupRows(GetBackupRowsGrpcRequest) returns (stream DbRowsChunkGrpcModel);
+    rpc DownloadBackup(BackupGrpcRequest) returns (stream BackupChunkGrpcModel);
+    rpc UploadBackup(stream BackupChunkGrpcModel) returns (UploadBackupGrpcResponse);
+    rpc RestoreBackup(RestoreBackupGrpcRequest) returns (RestoreBackupGrpcResponse);
+
+    rpc GetNamespaces(google.protobuf.Empty) returns (stream NamespaceGrpcModel);
+    rpc DeleteNamespace(DeleteNamespaceGrpcRequest) returns (google.protobuf.Empty);
+    rpc MoveTableToNamespace(MoveTableToNamespaceGrpcRequest) returns (google.protobuf.Empty);
+
+    rpc Insert(WriteRowGrpcRequest) returns (google.protobuf.Empty);
+    rpc InsertOrReplace(WriteRowGrpcRequest) returns (google.protobuf.Empty);
+    // Overwrites a stored row under an optimistic-concurrency check.
+    //
+    // The TimeStamp the entity carries is **the version the client read the row
+    // at**, and the write is refused with ABORTED when the stored row is no
+    // longer that version - somebody has rewritten it in between. NOT_FOUND
+    // means there was nothing stored to replace, and INVALID_ARGUMENT that the
+    // entity carries no TimeStamp at all, which this call can not be made
+    // without.
+    //
+    // The row that lands carries the server's clock, whatever
+    // UseClientTimeStamp says and whatever the entity brought: that value is the
+    // version, not the new one. So a caller reads, changes, writes, and on
+    // ABORTED reads again and repeats - and the loop ends, because every write
+    // that lands makes a version nobody else is holding.
+    rpc Replace(WriteRowGrpcRequest) returns (google.protobuf.Empty);
+    rpc InsertOrReplaceIfNew(WriteRowGrpcRequest) returns (InsertOrReplaceIfNewGrpcResponse);
+    rpc DeleteRow(DeleteRowGrpcRequest) returns (DeleteRowGrpcResponse);
+    rpc BulkDelete(BulkDeleteGrpcRequest) returns (BulkDeleteGrpcResponse);
+
+    // A batch of one kind of write, streamed and applied whole or not at all.
+    rpc BulkWrite(stream BulkWriteGrpcRequest) returns (google.protobuf.Empty);
+
+    // Writes of several kinds - cleaning and inserting - applied together. The
+    // actions are still streamed; the transaction is what makes them one step.
+    rpc StartTransaction(StartTransactionGrpcRequest) returns (StartTransactionGrpcResponse);
+    rpc PostTransactionActions(stream TransactionActionGrpcModel) returns (google.protobuf.Empty);
+    rpc CommitTransaction(TransactionGrpcRequest) returns (google.protobuf.Empty);
+    rpc CancelTransaction(TransactionGrpcRequest) returns (google.protobuf.Empty);
+
+    rpc SetTableAttributes(SetTableAttributesGrpcRequest) returns (google.protobuf.Empty);
+    rpc CleanTable(CleanTableGrpcRequest) returns (google.protobuf.Empty);
+    rpc DeleteTable(DeleteTableGrpcRequest) returns (google.protobuf.Empty);
+    rpc DeletePartitions(DeletePartitionsGrpcRequest) returns (google.protobuf.Empty);
+
+    rpc CleanAndKeepMaxPartitions(CleanAndKeepMaxPartitionsGrpcRequest) returns (google.protobuf.Empty);
+    rpc CleanPartitionAndKeepMaxRows(CleanPartitionAndKeepMaxRowsGrpcRequest) returns (google.protobuf.Empty);
+
+    rpc GetRow(GetRowGrpcRequest) returns (GetRowGrpcResponse);
+    rpc GetRows(GetRowsGrpcRequest) returns (stream DbRowsChunkGrpcModel);
+    rpc GetHighestRowAndBelow(GetHighestRowAndBelowGrpcRequest) returns (stream DbRowsChunkGrpcModel);
+    rpc GetSinglePartitionMultipleRows(GetSinglePartitionMultipleRowsGrpcRequest) returns (stream DbRowsChunkGrpcModel);
+    rpc GetTableSize(GetTableSizeGrpcRequest) returns (TableSizeGrpcResponse);
+    rpc GetRowsWithSchema(GetRowsWithSchemaGrpcRequest) returns (stream DbRowsWithSchemaGrpcModel);
+    rpc MigrateFrom(MigrateFromGrpcRequest) returns (MigrateFromGrpcResponse);
+    rpc FlushToDisk(google.protobuf.Empty) returns (FlushToDiskGrpcResponse);
+}

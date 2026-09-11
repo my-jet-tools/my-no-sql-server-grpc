@@ -1,0 +1,24 @@
+[package]
+name = "my-no-sql-grpc-reader"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+my-no-sql-grpc-core = { workspace = true }
+
+rust-extensions = { workspace = true }
+
+ahash = { workspace = true }
+arc-swap = { workspace = true }
+parking_lot = { workspace = true }
+
+tonic = { version = "*" }
+tonic-prost = "*"
+prost = "*"
+
+tokio = { version = "*", features = ["rt", "sync", "time", "macros"] }
+tokio-stream = "*"
+
+[build-dependencies]
+ci-utils = { workspace = true }
