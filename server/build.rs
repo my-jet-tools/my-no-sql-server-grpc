@@ -20,6 +20,10 @@ fn main() {
     // workflow with the step in it is kept by hand.
     ci_utils::ci_generator::CiGenerator::new(env!("CARGO_PKG_NAME"))
         .as_basic_service()
+        // The built UI. Declared here and not written into the Dockerfile by
+        // hand: the generator rewrites that file on every build, so a hand-added
+        // line survives exactly until the next `cargo build`.
+        .add_docker_copy_file("./wwwroot", "./wwwroot")
         .ci_with_protoc()
         .generate_github_ci_file()
         .build();

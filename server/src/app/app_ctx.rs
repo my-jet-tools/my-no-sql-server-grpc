@@ -30,6 +30,11 @@ pub struct AppContext {
     pub states: Arc<AppStates>,
     /// When this process came up - the moment an uptime is measured from.
     pub created: DateTimeAsMicroseconds,
+    /// Where the two listeners bound. Resolved once, here, because the answer
+    /// has to be the same for the listener and for whoever asks the server
+    /// where it is.
+    pub http_endpoint: std::net::SocketAddr,
+    pub grpc_endpoint: std::net::SocketAddr,
     /// One persist pass at a time. The timer, the flush call and the shutdown
     /// drain all write through the same page-files, and a partition landing
     /// before the `tables.meta` entry that names its table is a table restored
@@ -56,6 +61,8 @@ impl AppContext {
             settings,
             states: Arc::new(AppStates::create_un_initialized()),
             created: DateTimeAsMicroseconds::now(),
+            http_endpoint: crate::listen_endpoints::http(),
+            grpc_endpoint: crate::listen_endpoints::grpc(),
             persist_lock: tokio::sync::Mutex::new(()),
             mcp_writes: WriteWindow::new(),
             ui_writes: WriteWindow::new(),

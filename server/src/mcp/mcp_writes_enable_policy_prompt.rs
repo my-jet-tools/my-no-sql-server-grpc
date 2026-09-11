@@ -32,7 +32,7 @@ There is no password and, deliberately, **no tool which opens them**. A person
 opens the window from outside this surface:
 
 > `POST /api/Mcp/Writes?enabled=true` on the server's HTTP port
-> (`curl -X POST 'http://<host>:5123/api/Mcp/Writes?enabled=true'`, plus an
+> (`curl -X POST 'http://<host>:8000/api/Mcp/Writes?enabled=true'`, plus an
 > `apikey:` header if the server was given one).
 
 Once open, writes stay open for **10 minutes** and then shut themselves.

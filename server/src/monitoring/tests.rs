@@ -201,9 +201,15 @@ async fn the_status_says_what_the_server_is_made_of() {
     // writer breaks is the structure, and `contains` would not notice.
     assert_eq!(text(json, "server.name"), crate::app::APP_NAME);
     assert_eq!(text(json, "server.location"), "test");
+    // The endpoint as the server bound it, host included: a deployment may
+    // narrow gRPC to loopback, and the port alone would hide that.
     assert_eq!(
-        number(json, "server.grpcPort"),
-        crate::consts::GRPC_PORT as i64
+        text(json, "server.grpcEndpoint"),
+        service.app.grpc_endpoint.to_string()
+    );
+    assert_eq!(
+        text(json, "server.httpEndpoint"),
+        service.app.http_endpoint.to_string()
     );
     assert!(!boolean(json, "server.backups.configured"));
     // Backups are not configured, so the two policy numbers are absent rather

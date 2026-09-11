@@ -17,6 +17,7 @@ mod end_to_end_tests;
 mod grpc_server;
 mod http_server;
 mod json_view;
+mod listen_endpoints;
 mod mcp;
 mod monitoring;
 mod operations;
@@ -89,12 +90,9 @@ async fn main() {
         backup_timer.start(app.states.clone(), my_logger::LOGGER.clone());
     }
 
-    crate::http_server::start_up::start(&app, crate::consts::HTTP_PORT);
+    crate::http_server::start_up::start(&app, app.http_endpoint);
 
-    tokio::spawn(crate::grpc_server::start(
-        app.clone(),
-        crate::consts::GRPC_PORT,
-    ));
+    tokio::spawn(crate::grpc_server::start(app.clone(), app.grpc_endpoint));
 
     app.states.wait_until_shutdown().await;
 

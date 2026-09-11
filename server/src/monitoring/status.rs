@@ -45,8 +45,11 @@ fn write_server(
         .write("location", app.settings.location.as_str())
         .write("startedAt", app.created.to_rfc3339())
         .write("upTimeSecs", super::secs_ago(now, app.created))
-        .write("grpcPort", crate::consts::GRPC_PORT)
-        .write("httpPort", crate::consts::HTTP_PORT)
+        // Endpoints and not port numbers: a deployment may narrow gRPC to
+        // loopback, and "8888" would then be an answer that leaves out the
+        // half that matters.
+        .write("grpcEndpoint", app.grpc_endpoint.to_string())
+        .write("httpEndpoint", app.http_endpoint.to_string())
         .write("compressData", app.settings.compress_data)
         .write("persistenceDest", app.settings.get_persistence_dest())
         .write_json_object("backups", |backups| {

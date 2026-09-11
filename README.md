@@ -46,10 +46,16 @@ a stored row to a human under the row's own field names.
 
 ## Ports
 
-| Port | What is there |
-|------|---------------|
-| 5124 | gRPC - `Writer` and `Reader`, the entrance applications use |
-| 5123 | HTTP - the web UI, swagger, `/metrics`, MCP at `/mcp` |
+| Default endpoint | What is there | Override with |
+|------------------|---------------|---------------|
+| `0.0.0.0:8888` | gRPC - `Writer` and `Reader`, the entrance applications use | `LISTEN_GRPC_ENDPOINT` |
+| `0.0.0.0:8000` | HTTP - the web UI, swagger, `/metrics`, MCP at `/mcp` | `LISTEN_HTTP_ENDPOINT` |
+
+Either variable takes an endpoint - `LISTEN_GRPC_ENDPOINT=127.0.0.1:8888`, which is
+how a deployment keeps the write transport off every other interface - or a bare
+port, taken as that port on `0.0.0.0`. A value that is neither stops the server
+at start up instead of quietly binding the default, because a server nobody can
+find is worse than one that did not come up.
 
 ## Running it
 
@@ -74,7 +80,7 @@ exposed.
 ```bash
 cargo run -p my-no-sql-server-grpc
 # or the image the release workflow builds:
-docker run -p 5123:5123 -p 5124:5124 \
+docker run -p 8000:8000 -p 8888:8888 \
   -v ~/.mynosqlservergrpc:/root/.mynosqlservergrpc \
   -v ~/mynosql-data:/mynosql-data \
   ghcr.io/my-jet-tools/my-no-sql-server-grpc:<tag>
@@ -100,7 +106,7 @@ tells it when the copy went stale.
 
 ## The UI
 
-Open `http://localhost:5123` and the server serves the page itself: an overview
+Open `http://localhost:8000` and the server serves the page itself: an overview
 of what it is doing, a data browser that reads rows through their schema, the
 backups, the reader sessions and a settings page.
 
@@ -182,7 +188,7 @@ cargo fmt --all
 
 # both clients against a server in another process - the example lives in the SDK
 cargo run -p my-no-sql-server-grpc
-cd ../my-no-sql-grpc-sdk && cargo run --example round_trip --all-features -- http://127.0.0.1:5124
+cd ../my-no-sql-grpc-sdk && cargo run --example round_trip --all-features -- http://127.0.0.1:8888
 ```
 
 The contracts are exercised on two levels: [server/src/sdk_tests.rs](server/src/sdk_tests.rs)

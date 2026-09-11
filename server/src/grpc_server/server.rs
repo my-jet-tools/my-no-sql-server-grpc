@@ -8,9 +8,7 @@ use crate::my_no_sql_writer_grpc::writer_server::WriterServer;
 use super::{ReaderGrpcService, WriterGrpcService};
 
 /// Every service of this server shares one port.
-pub async fn start(app: Arc<AppContext>, port: u16) {
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
+pub async fn start(app: Arc<AppContext>, addr: SocketAddr) {
     println!("Listening gRPC at: {addr}");
 
     let writer = WriterServer::new(WriterGrpcService::new(app.clone()));

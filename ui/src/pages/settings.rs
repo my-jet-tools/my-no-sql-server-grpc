@@ -631,7 +631,10 @@ fn render_server_card(server: &ServerApiModel) -> Element {
         .to_string();
 
     let location = or_dash(&server.location);
-    let ports = format!("grpc {} · http {}", server.grpc_port, server.http_port);
+    let ports = format!(
+        "grpc {} · http {}",
+        server.grpc_endpoint, server.http_endpoint
+    );
     // The moment, not the up-time: the topbar counts the up-time and this card
     // is read once, so a span rendered here would be as old as the page.
     let started = format_moment(&server.started_at);

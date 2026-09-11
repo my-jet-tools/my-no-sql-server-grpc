@@ -151,7 +151,10 @@ pub fn Topbar(
             } else {
                 format!("{} · v{}", server.name, server.version)
             };
-            let ports = format!("gRPC {} · HTTP {}", server.grpc_port, server.http_port);
+            let ports = format!(
+                "gRPC {} · HTTP {}",
+                server.grpc_endpoint, server.http_endpoint
+            );
             let uptime = format_uptime(server.up_time_secs);
             let started_at = server.started_at.clone();
 

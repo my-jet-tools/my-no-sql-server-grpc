@@ -46,10 +46,12 @@ pub struct ServerApiModel {
     pub started_at: String,
     #[serde(rename = "upTimeSecs", default)]
     pub up_time_secs: f64,
-    #[serde(rename = "grpcPort", default)]
-    pub grpc_port: u16,
-    #[serde(rename = "httpPort", default)]
-    pub http_port: u16,
+    /// Where the listeners bound, host included - a deployment may narrow gRPC
+    /// to loopback, and a port on its own would leave that out.
+    #[serde(rename = "grpcEndpoint", default)]
+    pub grpc_endpoint: String,
+    #[serde(rename = "httpEndpoint", default)]
+    pub http_endpoint: String,
     #[serde(rename = "compressData", default)]
     pub compress_data: bool,
     #[serde(rename = "persistenceDest", default)]

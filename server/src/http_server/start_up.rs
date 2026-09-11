@@ -11,9 +11,7 @@ use super::ApiKeyMiddleware;
 /// The HTTP surface: reads rendered through their schema, which is what makes a
 /// row readable by a human, and the writes which carry no entity - keys and
 /// attributes. Anything carrying an entity stays on gRPC.
-pub fn start(app: &Arc<AppContext>, port: u16) {
-    let addr = SocketAddr::from(([0, 0, 0, 0], port));
-
+pub fn start(app: &Arc<AppContext>, addr: SocketAddr) {
     println!("Listening HTTP at: {addr}");
 
     let mut http_server = MyHttpServer::new(addr);
