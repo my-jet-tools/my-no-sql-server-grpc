@@ -1,0 +1,48 @@
+/* === Reusable mini line chart === */
+.mini-chart {
+    width: 100%;
+    display: block;
+}
+
+.mini-chart--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-faint);
+    font-size: 12px;
+}
+
+.mini-chart__grid {
+    stroke: var(--border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+.mini-chart__line {
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.mini-chart__line--in {
+    stroke: var(--ok);
+}
+
+.mini-chart__line--out {
+    stroke: var(--info);
+}
+
+.mini-chart__line--read {
+    stroke: var(--info);
+}
+
+.mini-chart__line--write {
+    stroke: var(--accent);
+}
+
+.mini-chart__label {
+    fill: var(--text-faint);
+    font-size: 11px;
+    font-family: var(--font-mono);
+}

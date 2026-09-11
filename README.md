@@ -30,9 +30,13 @@ worth reading before changing anything.
 - **Backups**: a zip per namespace - take one, inspect it, download it, upload
   it, restore the whole thing or a single partition; on a timer if the operator
   configured one.
-- **HTTP** (for the UI and the operator): reads rendered by the table's schema,
-  writes without an entity, status, connections, statistics, Prometheus
-  `/metrics`, swagger UI.
+- **A web UI** on the same port: the overview, a data browser reading rows
+  through their schema, the backups, the reader sessions, and the settings - with
+  its destructive operations behind a ten-minute window somebody has to open.
+- **HTTP**: everything the UI reads and writes - rows rendered by the table's
+  schema, namespaces, per-partition metrics, the backups, writes that carry no
+  entity - plus status, connections, statistics, Prometheus `/metrics` and the
+  swagger UI.
 - **MCP** at `/mcp`: 15 tools and 2 prompts. Its writes are shut until a human
   calls `POST /api/Mcp/Writes?enabled=true` - a window of 10 minutes.
 
@@ -45,7 +49,7 @@ a stored row to a human under the row's own field names.
 | Port | What is there |
 |------|---------------|
 | 5124 | gRPC - `Writer` and `Reader`, the entrance applications use |
-| 5123 | HTTP - swagger UI, `/metrics`, MCP at `/mcp`, the operator's handles |
+| 5123 | HTTP - the web UI, swagger, `/metrics`, MCP at `/mcp` |
 
 ## Running it
 
@@ -85,12 +89,33 @@ and the `PersistenceDest` inside it has to point at the mounted volume.
 |--------|---------------|
 | [server/](server/) | the server: gRPC, persistence, HTTP, MCP, GC, backups |
 | [proto/](proto/) | the contracts themselves, compiled in place by the build script |
+| [ui/](ui/) | the web UI - a Dioxus app, built by `dx` for wasm, not a workspace member |
+| `wwwroot/` | the built UI, committed, served as static files and baked into the image |
 
 The core, the entity macro and both clients live in
 [my-no-sql-grpc-sdk](https://github.com/my-jet-tools/my-no-sql-grpc-sdk), which
 this repository depends on by tag - the very same crates an application takes
 from there. The SDK keeps a committed copy of `proto/`, and a CI job of its own
 tells it when the copy went stale.
+
+## The UI
+
+Open `http://localhost:5123` and the server serves the page itself: an overview
+of what it is doing, a data browser that reads rows through their schema, the
+backups, the reader sessions and a settings page.
+
+Destructive buttons are shut until somebody opens a ten-minute window under
+Settings, which is the same rule the MCP write tools live by and a separate
+window from theirs - opening the writes for an agent must not unlock the delete
+buttons of a page left open in a browser.
+
+```bash
+./build-ui.sh      # dx build --release --web, then copy into wwwroot/
+```
+
+`wwwroot/` is committed, so running the server needs no `dx` and the docker image
+carries the page. Change anything under `ui/` and the built output has to be
+rebuilt and committed with it.
 
 ## Clients
 

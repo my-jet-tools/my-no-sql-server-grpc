@@ -15,6 +15,10 @@ use super::write::{mark_partitions_to_persist, mark_table_metadata_to_persist};
 pub struct TakenBackup {
     pub name_space: String,
     pub name: String,
+    /// Bytes of the archive. Carried out of the operation because the caller
+    /// would otherwise have to list the folder again to learn what it has just
+    /// written.
+    pub size: u64,
 }
 
 /// Backs every namespace up, one zip each.
@@ -36,16 +40,30 @@ pub async fn make(
             continue;
         }
 
-        let content = build(&db_namespace)?;
-        let name = app.backups.save(&db_namespace.name, &content, now).await?;
-
-        result.push(TakenBackup {
-            name_space: db_namespace.name.clone(),
-            name,
-        });
+        result.push(make_one(app, &db_namespace, now).await?);
     }
 
     Ok(result)
+}
+
+/// One namespace, one zip - what the timer does to each of them in turn, and
+/// what a person asking for a backup of the namespace they are looking at
+/// means. Kept apart from [`make`] rather than duplicated: an archive taken by
+/// hand and one taken by the timer must be the same file.
+pub async fn make_one(
+    app: &AppContext,
+    db_namespace: &DbNamespace,
+    now: DateTimeAsMicroseconds,
+) -> Result<TakenBackup, String> {
+    let content = build(db_namespace)?;
+    let size = content.len() as u64;
+    let name = app.backups.save(&db_namespace.name, &content, now).await?;
+
+    Ok(TakenBackup {
+        name_space: db_namespace.name.clone(),
+        name,
+        size,
+    })
 }
 
 /// The snapshot is taken from **memory**, not from the page-files: what is on

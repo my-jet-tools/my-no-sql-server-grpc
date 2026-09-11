@@ -18,6 +18,8 @@ parking_lot = { workspace = true }
 my-http-server = { tag = "0.9.0", git = "https://github.com/MyJetTools/my-http-server.git", features = [
     "macros",
     "controllers",
+    # The UI: wwwroot is served by StaticFilesMiddleware, which this gates.
+    "static-files",
 ] }
 my-http-utils = { tag = "0.1.0", git = "https://github.com/MyJetTools/my-http-utils.git", features = [
     "server",

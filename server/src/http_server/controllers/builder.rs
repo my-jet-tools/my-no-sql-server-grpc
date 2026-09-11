@@ -20,8 +20,35 @@ pub fn build(
     )));
     result.register_get_action(Arc::new(super::GetTablesAction::new(app.clone())));
     result.register_get_action(Arc::new(super::GetPartitionsAction::new(app.clone())));
+    result.register_get_action(Arc::new(super::GetPartitionDetailsAction::new(app.clone())));
+    // Deliberately namespace-less: it is the call that says which namespaces
+    // exist, and resolving the header would create the one being asked about.
+    result.register_get_action(Arc::new(super::GetNamespacesAction::new(app.clone())));
     result.register_get_action(Arc::new(super::GetRowsAction::new(app.clone())));
     result.register_get_action(Arc::new(super::GetRowStatisticsAction::new(app.clone())));
+    // A top level navigation, so this one takes the namespace as `?ns=` - an
+    // `<a href>` has nowhere to put a header.
+    result.register_get_action(Arc::new(super::DownloadRowsAction::new(app.clone())));
+
+    // What the UI's settings page shows, and the switch under its own write
+    // window. The MCP switch stays where it is - two surfaces, two windows.
+    result.register_get_action(Arc::new(super::GetSettingsAction::new(app.clone())));
+    result.register_post_action(Arc::new(super::SetSettingsAction::new(app.clone())));
+    result.register_post_action(Arc::new(super::UiWritesAction::new(app.clone())));
+
+    // Browsing a backup without restoring it: the archive is a zip per
+    // namespace, and these four walk it from the outside in.
+    result.register_get_action(Arc::new(super::GetBackupsAction::new(app.clone())));
+    result.register_get_action(Arc::new(super::GetBackupTablesAction::new(app.clone())));
+    result.register_get_action(Arc::new(super::GetBackupPartitionsAction::new(app.clone())));
+    result.register_get_action(Arc::new(super::GetBackupRowsAction::new(app.clone())));
+
+    // The three that change something, each behind the UI write window.
+    result.register_post_action(Arc::new(super::MakeBackupAction::new(app.clone())));
+    result.register_post_action(Arc::new(super::RestoreBackupAction::new(app.clone())));
+    result.register_post_action(Arc::new(super::RestoreBackupPartitionAction::new(
+        app.clone(),
+    )));
 
     // The writes which carry no entity: keys and attributes, nothing that would
     // have to be turned from JSON into protobuf. Anything carrying an entity

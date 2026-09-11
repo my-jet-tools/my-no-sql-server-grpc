@@ -59,5 +59,15 @@ pub fn start(app: &Arc<AppContext>, port: u16) {
 
     http_server.add_middleware(controllers);
 
+    // Last, and `index.html` twice on purpose: once as the index of a folder,
+    // once as what a miss answers with. The UI is a single page application, so
+    // `/data` and `/snapshots` are its own routes, not files - a 404 there has
+    // to hand the app back to the browser instead of an error.
+    http_server.add_middleware(Arc::new(
+        my_http_server::StaticFilesMiddleware::new()
+            .add_index_file("index.html")
+            .set_not_found_file("index.html".to_string()),
+    ));
+
     http_server.start(app.states.clone(), my_logger::LOGGER.clone());
 }

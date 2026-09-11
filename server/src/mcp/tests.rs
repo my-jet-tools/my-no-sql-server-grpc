@@ -589,15 +589,15 @@ fn the_write_window_closes_on_its_own() {
     app.open_mcp_writes(now);
     assert_eq!(
         app.mcp_writes_remaining_secs(now),
-        Some(crate::app::MCP_WRITES_WINDOW_SECS)
+        Some(crate::app::WRITE_WINDOW_SECS)
     );
 
     let mut later = now;
-    later.add_seconds(crate::app::MCP_WRITES_WINDOW_SECS - 1);
+    later.add_seconds(crate::app::WRITE_WINDOW_SECS - 1);
     assert!(app.mcp_writes_are_open(later));
 
     let mut past = now;
-    past.add_seconds(crate::app::MCP_WRITES_WINDOW_SECS);
+    past.add_seconds(crate::app::WRITE_WINDOW_SECS);
     assert!(!app.mcp_writes_are_open(past));
 
     // ...and shutting it is immediate.

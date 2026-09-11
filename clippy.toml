@@ -1,0 +1,7 @@
+# `HttpFailResult` is 136 bytes - 128 of them the `http::Response` inside its
+# `HttpOutput::Raw` variant - and every HTTP action returns it, because that is
+# the signature `#[http_route]` generates. Nothing on this side can box it, so
+# the lint fires once per action and says nothing about our code. Raised rather
+# than silenced per call site: an `#[allow]` on thirty handlers would hide the
+# day one of them really does start carrying something large.
+large-error-threshold = 160

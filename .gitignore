@@ -1,3 +1,6 @@
 /target
 .DS_Store
 Cargo.lock
+# The UI's own build output. `wwwroot/` - what the build puts there - IS
+# committed: the server serves it and the image bakes it in.
+/ui/target

@@ -1,0 +1,307 @@
+/* === Overview page === */
+
+.overview {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* --- Health banner --- */
+.health {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 16px 20px;
+    background-image: linear-gradient(90deg, var(--ok-soft) 0%, transparent 70%);
+}
+
+.health--warn {
+    background-image: linear-gradient(90deg, var(--warn-soft) 0%, transparent 70%);
+}
+
+.health--bad {
+    background-image: linear-gradient(90deg, var(--danger-soft) 0%, transparent 70%);
+}
+
+.health__icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--ok);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 6px var(--ok-soft);
+}
+
+.health--warn .health__icon { background: var(--warn); box-shadow: 0 0 0 6px var(--warn-soft); }
+.health--bad .health__icon { background: var(--danger); box-shadow: 0 0 0 6px var(--danger-soft); }
+
+.health__icon svg { width: 26px; height: 26px; }
+
+.health__text {
+    flex: 1;
+    min-width: 0;
+}
+
+.health__headline {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.2;
+    margin-bottom: 4px;
+}
+
+.health__sub {
+    font-size: 12.5px;
+    color: var(--text-muted);
+}
+
+.health__uptime {
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
+    padding: 6px 12px;
+    border-radius: var(--r-md);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text);
+    flex-shrink: 0;
+}
+
+.health__uptime-label {
+    color: var(--text-faint);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: block;
+    margin-bottom: 2px;
+}
+
+/* --- Stats row --- */
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+/* --- Two-column grid --- */
+.two-col {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 1100px) {
+    .two-col {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* --- Reader health grid --- */
+.rh-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20px, 1fr));
+    gap: 4px;
+}
+
+.rh-cell {
+    aspect-ratio: 1;
+    border-radius: 3px;
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    transition: transform 0.12s ease;
+    cursor: default;
+    position: relative;
+}
+
+.rh-cell:hover {
+    transform: scale(1.25);
+    z-index: 5;
+}
+
+.rh-cell--ok { background: var(--ok); border-color: var(--ok); }
+.rh-cell--warn { background: var(--warn); border-color: var(--warn); }
+.rh-cell--bad { background: var(--danger); border-color: var(--danger); }
+
+.rh-legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.rh-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.rh-legend__swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+}
+
+/* --- Table coverage --- */
+.coverage {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+}
+
+.coverage__donut {
+    flex-shrink: 0;
+    position: relative;
+    width: 130px;
+    height: 130px;
+}
+
+.coverage__donut svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.coverage__donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.coverage__donut-value {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.coverage__donut-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+}
+
+.coverage__list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+}
+
+.coverage__row {
+    display: grid;
+    grid-template-columns: 1fr 80px auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 11.5px;
+}
+
+.coverage__row-name {
+    font-family: var(--font-mono);
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.coverage__row-bar {
+    height: 6px;
+    background: var(--bg-sunken);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.coverage__row-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+}
+
+.coverage__row-val {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-muted);
+}
+
+/* --- Data table (writers/readers card tables) --- */
+.dt {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.dt thead th {
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 14px;
+    background: var(--bg-sunken);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.dt tbody td {
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    vertical-align: middle;
+}
+
+.dt tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.dt tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.dt tbody tr:nth-child(even) {
+    background: var(--bg-row-alt);
+}
+
+.dt tbody tr:nth-child(even):hover {
+    background: var(--bg-hover);
+}
+
+.dt .mono {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+}
+
+.dt .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.dt-ellipsis {
+    max-width: 240px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+}

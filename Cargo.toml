@@ -4,6 +4,9 @@ resolver = "3"
 # this repository depends on by tag - the very same crates, from the repo an
 # application takes them from.
 members = ["server"]
+# The UI is built by `dx` for wasm32, not by cargo for the host, so it is not a
+# member - `ui/build.sh` builds it and puts the result into `wwwroot/`.
+exclude = ["ui"]
 
 [workspace.package]
 version = "0.1.0"
