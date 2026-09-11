@@ -23,8 +23,9 @@ jobs:
         run: sed -i -e 's/^version = .*/version = "${{ steps.get_version.outputs.VERSION }}"/' Cargo.toml
 
 
-      - name: Build
-        run: |
+      - name: Install Protoc and Build
+        uses: arduino/setup-protoc@v3
+      - run: |
           export GIT_HUB_TOKEN="${{ secrets.PUBLISH_TOKEN }}"
           cargo build --release
 
